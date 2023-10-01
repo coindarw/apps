@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segtree Debug</title>
+    <link rel="shortcut icon" type="image/x-icon" href="https://coindarw.github.io/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/json5/2.2.3/index.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.28.0/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        #container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #editorContainer {
+            flex: 0.8;
+            border-right: 1px solid #cccccc9f;
+            height: 100%;
+        }
+        
+        #editor {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #treeContainer {
+            flex: 1.2;
+            height: 100%;
+            width: 100%;
+            max-height: 100%;
+            max-width: 100%;
+            overflow: auto;
+            display: block;
+        }
+        
+        #treeContainer svg {
+            width: auto;
+            height: auto;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="../../">coindarw's page</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+        </div>
+    </nav>
+    <!-- Import scripts -->
+    <button class="btn btn-primary me-5" onclick="drawTree()">Draw</button>
+    <button class="btn btn-secondary" onclick="clearEditor()">Clear</button>
+    <button class="btn btn-secondary" onclick="editor.getSession().setValue(defaultText)">Reset</button>
+
+    <div id="container">
+        <div id="editorContainer">
+            <div id="editor" style="min-height: 100px"></div>
+        </div>
+        <div id="treeContainer"></div>
+    </div>
+    <script>
+        const editor = ace.edit('editor');
+        editor.setTheme('ace/theme/monokai');
+        editor.getSession().setMode('ace/mode/json5');
+        editor.getSession().setUseWrapMode(true);
+        editor.setKeyboardHandler('ace/keyboard/vscode');
+        const defaultText = `[
+    {"idx":1,"val":"(l:0, r:2)","children": [{"idx":2,"val":"(l:0, r:2)","children": [{"idx":4,"val":"(l:0, r:2)","children": [{"idx":8,"val":"(l:0, r:1)","children": []},{"idx":9,"val":"(l:0, r:1)","children": []}]},{"idx":5,"val":"(l:1, r:0)","children": [{"idx":10,"val":"(l:1, r:0)","children": []},{"idx":11,"val":"(l:0, r:1)","children": []}]}]},{"idx":3,"val":"(l:0, r:2)","children": [{"idx":6,"val":"(l:0, r:2)","children": [{"idx":12,"val":"(l:0, r:1)","children": []},{"idx":13,"val":"(l:0, r:1)","children": []}]},{"idx":7,"val":"(l:2, r:0)","children": [{"idx":14,"val":"(l:1, r:0)","children": []},{"idx":15,"val":"(l:1, r:0)","children": []}]}]}]},
+    {"idx":1,"val":"(l:0, r:2)","children": [{"idx":2,"val":"(l:0, r:2)","children": [{"idx":4,"val":"(l:0, r:2)","children": [{"idx":8,"val":"(l:0, r:1)","children": []},{"idx":9,"val":"(l:0, r:1)","children": []}]},{"idx":5,"val":"(l:1, r:0)","children": [{"idx":10,"val":"(l:1, r:0)","children": []},{"idx":11,"val":"(l:0, r:1)","children": []}]}]},{"idx":3,"val":"(l:0, r:2)","children": [{"idx":6,"val":"(l:0, r:2)","children": [{"idx":12,"val":"(l:0, r:1)","children": []},{"idx":13,"val":"(l:0, r:1)","children": []}]},{"idx":7,"val":"(l:2, r:0)","children": [{"idx":14,"val":"(l:1, r:0)","children": []},{"idx":15,"val":"(l:1, r:0)","children": []}]}]}]},
+    {"idx":1,"val":"(l:0, r:3)","children": [{"idx":2,"val":"(l:0, r:3)","children": [{"idx":4,"val":"(l:0, r:2)","children": [{"idx":8,"val":"(l:0, r:1)","children": []},{"idx":9,"val":"(l:0, r:1)","children": []}]},{"idx":5,"val":"(l:0, r:1)","children": [{"idx":10,"val":"(l:0, r:1)","children": []},{"idx":11,"val":"(l:1, r:0)","children": []}]}]},{"idx":3,"val":"(l:4, r:0)","children": [{"idx":6,"val":"(l:2, r:0)","children": [{"idx":12,"val":"(l:1, r:0)","children": []},{"idx":13,"val":"(l:1, r:0)","children": []}]},{"idx":7,"val":"(l:2, r:0)","children": [{"idx":14,"val":"(l:1, r:0)","children": []},{"idx":15,"val":"(l:1, r:0)","children": []}]}]}]},
+]
+/*
+これは何？
+- AtCoder等競技プログラミングでよく使うSegment Tree, Lazy Segment Treeをデバッグするときに使う可視化ツールです。
+- セグ木の演算が壊れていないか確認するとき、データが複雑だと辛くなるので作りました
+- コンテスト本番で使ったことがないので致命的なバグがある可能性があります。もしもバグを見つけたら(Twitter:@coindarw)に教えてください
+
+- このエディタはAceを使っているので、VSCodeのキーバインドが使えます(Ctrl+/でコメントアウト、Alt+zで折り返し表示など)
+
+使い方
+- ここに以下の形式でセグ木のデータを入力してください。
+  - JSON5形式のルートノードを表すオブジェクトの配列(JSON5なので末尾カンマやコメントが許容されます)
+  - ノードはidx, val, childrenというキーを持つオブジェクトで，再帰的に以下のような構造を持つ
+    - idx, val, childrenというキーを持つ
+    - idxはノードのインデックス
+    - valはノードの値の文字列
+    - childrenは配列で，子要素のオブジェクトを持つ
+
+使用例
+  - AC-Libraryのsegtreeなら，以下の①のようなコードをac-library/atcoder/segtree.hppに記述して配列要素をダンプできるようにする
+    - モノイドの型Tがcerr等に出力できる必要があるので，適宜②のようにoperator<<を定義する
+  - ③のように配列形式で出力する
+  - 出力をここにコピペし、Drawボタンを押すと可視化される
+    - ./a.out 2> errなどとするとこの部分だけ出力したファイルerrができるので便利
+
+①
+friend std::ostream& operator<<(std::ostream& os, segtree& seg) {
+  // for (int i = 1; i < seg.size; ++i) seg.push(i); // 通常のセグ木の時はここのコメントアウトを外す(遅延伝搬)
+  auto rec = [&](auto rec, int i) -> void {
+      os << "{";
+      os << "\\"idx\\":" << i << ",\\"val\\":\\"" << seg.d.at(i) << "\\",";
+      os << "\\"children\\": [";
+      if (i * 2 + 1 < seg.size * 2) {
+          rec(rec, i * 2);
+          os << ",";
+          rec(rec, i * 2 + 1);
+      }
+      os << "]";
+      os << "}";
+  };
+  rec(rec, 1);
+  return os;
+}
+
+②
+struct S {
+  int l, r;
+  friend ostream& operator<<(ostream& os, const S& s) { return os << "(l:" << s.l << ", r:" << s.r << ")"; }
+};
+
+③
+cerr << "[\\n";
+for (int i = 0; i < Q; ...) {
+  // セグ木のクエリを処理
+  cerr << seg << ",\\n";
+}
+cerr << "]\\n";
+*/
+`;
+        editor.insert(defaultText);
+
+        const drawTree = () => {
+            d3.select('#treeContainer').selectAll('svg').remove();
+            const parsedData = JSON5.parse(editor.getSession().getValue());
+            parsedData.forEach((data, idx) => {
+                draw(data, idx);
+            });
+        };
+
+        const clearEditor = () => {
+            editor.getSession().setValue('');
+        };
+
+        const draw = (input, idx) => {
+            const root = d3.hierarchy(input);
+
+            const fontSize = 12;
+            const font = `${fontSize}px sans-serif`;
+            const ctx = document.createElement('canvas').getContext('2d');
+            ctx.font = font;
+
+            function getMaxWidth(d) {
+                if (d.children) {
+                    return Math.max(
+                        ctx.measureText(d.val).width,
+                        ctx.measureText(d.idx).width,
+                        ...d.children.map((v) => getMaxWidth(v))
+                    );
+                } else {
+                    return Math.max(ctx.measureText(d.val).width, ctx.measureText(d.idx).width);
+                }
+            }
+
+            const maxTextWidth = getMaxWidth(input) + 20;
+            const nodeHeight = 50;
+            const width = root.leaves().length * maxTextWidth;
+            const height = (root.height + 1) * nodeHeight + 100;
+
+            const svg = d3.select('#treeContainer').append('svg').attr('width', width).attr('height', height);
+            const g = svg.append('g').attr('transform', `translate(0,${nodeHeight})`);
+            const treeLayout = d3
+                .tree()
+                .nodeSize([maxTextWidth, nodeHeight])
+                .separation((a, b) => {
+                    return 1;
+                });
+            treeLayout(root);
+            root.each((d) => {
+                d.x += width / 2;
+                d.y += nodeHeight;
+            });
+
+            svg
+                .selectAll('.link')
+                .data(root.links())
+                .enter()
+                .append('path')
+                .attr('class', 'link')
+                .attr(
+                    'd',
+                    d3
+                    .linkHorizontal()
+                    .x((d) => d.x)
+                    .y((d) => d.y)
+                )
+                .attr('fill', 'none')
+                .attr('stroke', '#555')
+                .attr('stroke-width', '2px');
+            const nodes = svg
+                .selectAll('.node')
+                .data(root.descendants())
+                .enter()
+                .append('g')
+                .attr('class', 'node')
+                .attr('transform', (d) => `translate(${d.x},${d.y})`);
+
+            nodes
+                .append('rect')
+                .attr('x', -maxTextWidth / 2 + 3)
+                .attr('y', -nodeHeight / 2)
+                .attr('width', maxTextWidth - 6)
+                .attr('height', nodeHeight - 5)
+                .attr('stroke', 'black')
+                .attr('fill', '#dddddd');
+
+            nodes
+                .append('text')
+                .attr('dy', -5)
+                .attr('text-anchor', 'middle')
+                .text((d) => d.data.idx);
+
+            nodes
+                .append('text')
+                .attr('dy', 15)
+                .attr('text-anchor', 'middle')
+                .text((d) => d.data.val);
+
+            // 左上にインデックスを表示
+            svg.append('text').attr('x', 10).attr('y', 30).attr('font-family', 'Arial').attr('font-size', '24px').text(idx);
+        };
+
+        drawTree();
+    </script>
+</body>
+
+</html>
